@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcards App</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Flashcards App</h1>
+
+        <!-- Form to Create a New Flashcard -->
+        <div class="form">
+            <input type="text" id="question" placeholder="Enter Question" required>
+            <input type="text" id="answer" placeholder="Enter Answer" required>
+            <button id="addBtn">Add Flashcard</button>
+        </div>
+
+        <!-- Flashcards Display Area -->
+        <div id="flashcards-container"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js";
+        import { getDatabase, ref, set, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDLxmyshhWk60Z0BgTdaRzSmKfkrEhDh68",
+            authDomain: "flashlearn-827a9.firebaseapp.com",
+            databaseURL: "https://flashlearn-827a9-default-rtdb.firebaseio.com",
+            projectId: "flashlearn-827a9",
+            storageBucket: "flashlearn-827a9.appspot.com",
+            messagingSenderId: "1052980548967",
+            appId: "1:1052980548967:web:9a318d7d1c50398477cbc2"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let questionInput = document.getElementById('question');
+        let answerInput = document.getElementById('answer');
+        let addBtn = document.getElementById('addBtn');
+        let flashcardsContainer = document.getElementById('flashcards-container');
+
+        // Function to add a new flashcard
+        function addFlashcard() {
+            if (questionInput.value && answerInput.value) {
+                const flashcardRef = ref(db, 'flashcards');
+                const newFlashcardRef = push(flashcardRef);
+                set(newFlashcardRef, {
+                    question: questionInput.value,
+                    answer: answerInput.value
+                }).then(() => {
+                    questionInput.value = '';
+                    answerInput.value = '';
+                }).catch((error) => {
+                    console.error('Error adding flashcard: ', error.message);
+                });
+            } else {
+                alert('Please enter both a question and an answer.');
+            }
+        }
+
+        // Function to delete a flashcard
+        function deleteFlashcard(id) {
+            const flashcardRef = ref(db, 'flashcards/' + id);
+            remove(flashcardRef).catch((error) => {
+                console.error('Error removing flashcard: ', error.message);
+            });
+        }
+
+        // Function to edit a flashcard
+        function editFlashcard(id, newQuestion, newAnswer) {
+            const flashcardRef = ref(db, 'flashcards/' + id);
+            set(flashcardRef, {
+                question: newQuestion,
+                answer: newAnswer
+            }).catch((error) => {
+                console.error('Error updating flashcard: ', error.message);
+            });
+        }
+
+        // Function to display flashcards
+        function displayFlashcards() {
+            const flashcardsRef = ref(db, 'flashcards');
+            onValue(flashcardsRef, (snapshot) => {
+                flashcardsContainer.innerHTML = '';
+                snapshot.forEach((childSnapshot) => {
+                    const flashcard = childSnapshot.val();
+                    const flashcardId = childSnapshot.key;
+
+                    const flashcardElement = document.createElement('div');
+                    flashcardElement.classList.add('flashcard');
+                    flashcardElement.innerHTML = `
+                        <div class="flashcard-content">
+                            <p><strong>Question:</strong> ${flashcard.question}</p>
+                            <p><strong>Answer:</strong> ${flashcard.answer}</p>
+                        </div>
+                        <div class="flashcard-buttons">
+                            <button onclick="window.editFlashcardPrompt('${flashcardId}')">Edit</button>
+                            <button onclick="window.deleteFlashcard('${flashcardId}')">Delete</button>
+                        </div>
+                    `;
+                    flashcardsContainer.appendChild(flashcardElement);
+                });
+            });
+        }
+
+        // Function to prompt user for editing flashcard
+        function editFlashcardPrompt(id) {
+            const newQuestion = prompt('Enter new question:');
+            const newAnswer = prompt('Enter new answer:');
+            if (newQuestion !== null && newAnswer !== null && newQuestion.trim() && newAnswer.trim()) {
+                editFlashcard(id, newQuestion, newAnswer);
+            }
+        }
+
+        // Make functions accessible globally
+        window.addFlashcard = addFlashcard;
+        window.deleteFlashcard = deleteFlashcard;
+        window.editFlashcardPrompt = editFlashcardPrompt;
+
+        // Set up event listeners and display flashcards
+        addBtn.addEventListener('click', addFlashcard);
+        displayFlashcards();
+    </script>
+</body>
+</html>

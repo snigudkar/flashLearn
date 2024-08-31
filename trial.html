@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flashcards App with Gemini AI</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Flashcards App with Gemini AI</h1>
+
+        <!-- Form to Create a New Flashcard -->
+        <div class="form">
+            <input type="text" id="question" placeholder="Enter Question" required>
+            <input type="text" id="answer" placeholder="Enter Answer" required>
+            <button id="addBtn">Add Flashcard</button>
+        </div>
+
+        <!-- Form to Generate Flashcards with AI -->
+        <div class="form">
+            <input type="text" id="topic" placeholder="Enter Topic" required>
+            <button id="generateBtn">Generate Flashcard with AI</button>
+        </div>
+
+        <!-- Flashcards Display Area -->
+        <div id="flashcards-container"></div>
+
+        <!-- Quiz Section -->
+        <div class="form">
+            <button id="startQuizBtn">Start Quiz</button>
+            <div id="quiz-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // Sample Flashcards Storage
+        let flashcards = [];
+        
+        // Get DOM elements
+        const questionInput = document.getElementById('question');
+        const answerInput = document.getElementById('answer');
+        const addBtn = document.getElementById('addBtn');
+        const topicInput = document.getElementById('topic');
+        const generateBtn = document.getElementById('generateBtn');
+        const flashcardsContainer = document.getElementById('flashcards-container');
+        const startQuizBtn = document.getElementById('startQuizBtn');
+        const quizContainer = document.getElementById('quiz-container');
+
+        // API configuration
+        const GEMINI_API_KEY = 'AIzaSyAYGoCayDj4dyBlvBVbNEt0XiiiPDTVgKw';
+        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=AIzaSyAYGoCayDj4dyBlvBVbNEt0XiiiPDTVgKw'; // Replace with the actual endpoint
+
+        // Function to add flashcard
+        function addFlashcard() {
+            if (questionInput.value && answerInput.value) {
+                flashcards.push({
+                    question: questionInput.value,
+                    answer: answerInput.value
+                });
+                questionInput.value = '';
+                answerInput.value = '';
+                displayFlashcards();
+            } else {
+                alert('Please enter both a question and an answer.');
+            }
+        }
+
+        // Function to display flashcards
+        function displayFlashcards() {
+            flashcardsContainer.innerHTML = '';
+            flashcards.forEach((flashcard, index) => {
+                const flashcardElement = document.createElement('div');
+                flashcardElement.classList.add('flashcard');
+                flashcardElement.innerHTML = `
+                    <div class="flashcard-content">
+                        <p><strong>Question:</strong> ${flashcard.question}</p>
+                        <p><strong>Answer:</strong> ${flashcard.answer}</p>
+                    </div>
+                    <div class="flashcard-buttons">
+                        <button onclick="editFlashcard(${index})">Edit</button>
+                        <button onclick="deleteFlashcard(${index})">Delete</button>
+                    </div>
+                `;
+                flashcardsContainer.appendChild(flashcardElement);
+            });
+        }
+
+        // Function to edit flashcard
+        function editFlashcard(index) {
+            const newQuestion = prompt('Enter new question:', flashcards[index].question);
+            const newAnswer = prompt('Enter new answer:', flashcards[index].answer);
+            if (newQuestion && newAnswer) {
+                flashcards[index].question = newQuestion;
+                flashcards[index].answer = newAnswer;
+                displayFlashcards();
+            }
+        }
+
+        // Function to delete flashcard
+        function deleteFlashcard(index) {
+            flashcards.splice(index, 1);
+            displayFlashcards();
+        }
+
+        // Function to start quiz
+        function startQuiz() {
+            if (flashcards.length === 0) {
+                alert('No flashcards available for quizzing.');
+                return;
+            }
+
+            quizContainer.innerHTML = '';
+            const currentFlashcard = flashcards[Math.floor(Math.random() * flashcards.length)];
+            const questionElement = document.createElement('div');
+            questionElement.innerHTML = `
+                <p><strong>Question:</strong> ${currentFlashcard.question}</p>
+                <input type="text" id="userAnswer" placeholder="Your Answer">
+                <button onclick="checkAnswer('${currentFlashcard.answer}')">Check Answer</button>
+            `;
+            quizContainer.appendChild(questionElement);
+        }
+
+        // Function to check answer
+        function checkAnswer(correctAnswer) {
+            const userAnswer = document.getElementById('userAnswer').value;
+            if (userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()) {
+                alert('Correct!');
+            } else {
+                alert('Incorrect. The correct answer was: ' + correctAnswer);
+            }
+            startQuiz(); // Start a new quiz question
+        }
+
+        // Function to generate flashcard using Gemini AI
+// Function to generate flashcard using Gemini AI
+async function generateFlashcard() {
+    const topic = topicInput.value;
+    if (topic) {
+        try {
+            const response = await fetch(GEMINI_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${GEMINI_API_KEY}` // Ensure API Key is correctly formatted
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        role: "user",
+                        parts: [{
+                            text: topic
+                        }]
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('API Response:', data); // Log the API response for debugging
+
+            // Ensure data.candidates and data.candidates[0] exist
+            if (data && data.candidates && data.candidates.length > 0) {
+                const flashcardText = data.candidates[0].content.parts[0].text.trim().split('\n');
+                const question = "Five subcategories of jazz:";
+                const answer = flashcardText.join('\n');
+                questionInput.value = question;
+                answerInput.value = answer;
+            } else {
+                console.error('Unexpected API response format:', data);
+                alert('Failed to generate flashcard. Please try again.');
+            }
+
+        } catch (error) {
+            console.error('Error generating flashcard with AI:', error.message);
+            alert('Error generating flashcard. Check console for details.');
+        }
+    } else {
+        alert('Please enter a topic.');
+    }
+}
+
+
+
+
+        // Event Listeners
+        addBtn.addEventListener('click', addFlashcard);
+        generateBtn.addEventListener('click', generateFlashcard);
+        startQuizBtn.addEventListener('click', startQuiz);
+    </script>
+</body>
+</html>
